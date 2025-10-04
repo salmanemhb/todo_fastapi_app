@@ -1,0 +1,6 @@
+FastAPI
+SQLAlchemy
+uvicorn
+databases
+pydantic
+sqlite3

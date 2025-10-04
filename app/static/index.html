@@ -1,0 +1,190 @@
+<!-- ...existing code... -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>To‑Do — Minimal</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root{
+      --bg:#0b0b0b;
+      --card:#111;
+      --muted:#9aa0a6;
+      --text:#e6e7e8;
+      --accent:#4ee285;
+      --accent-2:#6ea8ff;
+      --radius:10px;
+      --gap:14px;
+      --shadow: 0 6px 20px rgba(0,0,0,0.6);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    .theme-elegant{
+      --bg:#f6f6f8;
+      --card:#ffffff;
+      --muted:#64748b;
+      --text:#0f172a;
+      --accent:#0ea5a0;
+      --accent-2:#7c3aed;
+      --shadow: 0 10px 30px rgba(2,6,23,0.08);
+    }
+
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg),#080808);color:var(--text);}
+    .wrap{max-width:980px;margin:36px auto;padding:28px;display:flex;flex-direction:column;gap:18px}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    h1{margin:0;font-weight:600;letter-spacing:-0.02em}
+    .controls{display:flex;gap:8px;align-items:center}
+    .theme-toggle{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px 10px;border-radius:8px;color:var(--muted);cursor:pointer}
+    .card{background:var(--card);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);border:1px solid rgba(255,255,255,0.02)}
+    form{display:flex;gap:10px;align-items:center}
+    input[type="text"]{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:10px 12px;border-radius:8px;color:var(--text);min-width:180px}
+    button.primary{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#04121a;border:none;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:600;box-shadow:0 6px 18px rgba(0,0,0,0.45)}
+    .grid{display:grid;grid-template-columns:1fr 360px;gap:18px}
+    ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+    li.task{display:flex;justify-content:space-between;align-items:center;padding:12px;border-radius:8px;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);border:1px solid rgba(255,255,255,0.03)}
+    .meta{display:flex;flex-direction:column;gap:6px}
+    .title{font-weight:600}
+    .desc{font-size:13px;color:var(--muted)}
+    .actions{display:flex;gap:8px;align-items:center}
+    .btn{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted);padding:6px 9px;border-radius:8px;cursor:pointer}
+    .btn.danger{border-color:rgba(255,0,0,0.15);color:#ffb4b4}
+    .completed .title{ text-decoration:line-through;color:var(--accent); }
+    .completed .desc{ text-decoration:line-through;color:rgba(0,0,0,0.25); }
+    aside .card{height:100%;}
+    h2{margin:6px 0 12px 0}
+    .empty{color:var(--muted);padding:18px;border-radius:8px;background:linear-gradient(180deg, transparent, rgba(255,255,255,0.01))}
+    @media(max-width:880px){ .grid{grid-template-columns:1fr} .controls{flex-direction:row-reverse} }
+  </style>
+</head>
+<body>
+  <div class="wrap" id="app">
+    <header>
+      <div>
+        <h1>To‑Do</h1>
+        <div style="color:var(--muted);font-size:13px;margin-top:6px">Simple, elegant task manager</div>
+      </div>
+      <div class="controls">
+        <button class="theme-toggle" id="toggleTheme">Elegant theme</button>
+      </div>
+    </header>
+
+    <section class="card">
+      <form id="taskForm" style="display:flex;flex-wrap:wrap;">
+        <input id="title" type="text" placeholder="Task title" autocomplete="off" required />
+        <input id="description" type="text" placeholder="Description (optional)" autocomplete="off" />
+        <button class="primary" type="submit">Add Task</button>
+      </form>
+    </section>
+
+    <div class="grid">
+      <main>
+        <section class="card">
+          <h2>Active Tasks</h2>
+          <ul id="tasks"></ul>
+          <div id="noTasks" class="empty" style="display:none">No active tasks yet.</div>
+        </section>
+      </main>
+
+      <aside>
+        <section class="card">
+          <h2>Completed</h2>
+          <ul id="completedTasks"></ul>
+          <div id="noCompleted" class="empty" style="display:none">No completed tasks.</div>
+        </section>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    const base = '';
+    const appWrap = document.documentElement;
+    const toggleThemeBtn = document.getElementById('toggleTheme');
+    // initialize theme from localStorage
+    const theme = localStorage.getItem('todoTheme') || 'dark';
+    if(theme === 'elegant') appWrap.classList.add('theme-elegant');
+    toggleThemeBtn.textContent = theme === 'elegant' ? 'Matte Black' : 'Elegant theme';
+
+    toggleThemeBtn.onclick = () => {
+      const isElegant = appWrap.classList.toggle('theme-elegant');
+      toggleThemeBtn.textContent = isElegant ? 'Matte Black' : 'Elegant theme';
+      localStorage.setItem('todoTheme', isElegant ? 'elegant' : 'dark');
+    };
+
+    async function fetchTasks(){
+      try{
+        const res = await fetch(base + '/tasks/');
+        if(!res.ok) throw new Error('fetch failed');
+        const tasks = await res.json();
+        render(tasks);
+      }catch(e){
+        console.error(e);
+      }
+    }
+
+    function createTaskElement(task){
+      const li = document.createElement('li');
+      li.className = 'task' + (task.completed ? ' completed' : '');
+      const meta = document.createElement('div'); meta.className='meta';
+      const title = document.createElement('div'); title.className='title'; title.textContent = task.title || '(no title)';
+      const desc = document.createElement('div'); desc.className='desc'; desc.textContent = task.description || '';
+      meta.appendChild(title); meta.appendChild(desc);
+
+      const actions = document.createElement('div'); actions.className='actions';
+      const toggle = document.createElement('button'); toggle.className='btn';
+      toggle.textContent = task.completed ? 'Undo' : 'Complete';
+      toggle.onclick = async () => {
+        await fetch(`${base}/tasks/${task.id}`, {
+          method: 'PUT',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ completed: !task.completed })
+        });
+        fetchTasks();
+      };
+
+      const del = document.createElement('button'); del.className='btn danger';
+      del.textContent = 'Delete';
+      del.onclick = async () => {
+        if(!confirm('Delete this task?')) return;
+        await fetch(`${base}/tasks/${task.id}`, { method: 'DELETE' });
+        fetchTasks();
+      };
+
+      actions.appendChild(toggle); actions.appendChild(del);
+      li.appendChild(meta); li.appendChild(actions);
+      return li;
+    }
+
+    function render(tasks){
+      const activeList = document.getElementById('tasks');
+      const doneList = document.getElementById('completedTasks');
+      activeList.innerHTML=''; doneList.innerHTML='';
+
+      const active = tasks.filter(t => !t.completed);
+      const done = tasks.filter(t => t.completed);
+
+      if(active.length === 0) document.getElementById('noTasks').style.display='block'; else document.getElementById('noTasks').style.display='none';
+      if(done.length === 0) document.getElementById('noCompleted').style.display='block'; else document.getElementById('noCompleted').style.display='none';
+
+      active.forEach(t => activeList.appendChild(createTaskElement(t)));
+      done.forEach(t => doneList.appendChild(createTaskElement(t)));
+    }
+
+    document.getElementById('taskForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const title = document.getElementById('title').value.trim();
+      const description = document.getElementById('description').value.trim();
+      if(!title) return;
+      await fetch(base + '/tasks/', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ title, description })
+      });
+      document.getElementById('title').value=''; document.getElementById('description').value='';
+      fetchTasks();
+    };
+
+    // initial load
+    fetchTasks();
+  </script>
+</body>
+</html>
+<!-- ...existing code... -->
