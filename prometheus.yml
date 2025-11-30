@@ -1,0 +1,31 @@
+# Prometheus configuration for TODO FastAPI Application
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'todo-app-monitor'
+
+# Alerting configuration (optional)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Rule files (optional)
+rule_files:
+  # - "alert_rules.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # TODO FastAPI Application
+  - job_name: 'todo-fastapi-app'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['app:8000']
+    scrape_interval: 10s
+    scrape_timeout: 5s
