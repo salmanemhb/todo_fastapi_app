@@ -4,6 +4,7 @@ Centralizes all configuration settings and environment variables.
 """
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
+from typing import List
 
 
 class Settings(BaseSettings):
@@ -23,8 +24,8 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
     
-    # CORS settings
-    cors_origins: list = ["*"]
+    # CORS settings - use string for simple parsing
+    cors_origins: str = "*"
     
     # Monitoring settings
     enable_metrics: bool = True
@@ -34,6 +35,12 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=False
     )
+    
+    def get_cors_origins_list(self) -> List[str]:
+        """Convert CORS origins string to list."""
+        if self.cors_origins == "*":
+            return ["*"]
+        return [origin.strip() for origin in self.cors_origins.split(",")]
 
 
 @lru_cache()
